@@ -1,3 +1,6 @@
+import java.text.SimpleDateFormat
+import java.util.{Locale, Calendar}
+
 import net.ruippeixotog.scalascraper.browser.Browser
 import net.ruippeixotog.scalascraper.dsl.DSL._
 import net.ruippeixotog.scalascraper.dsl.DSL.Extract._
@@ -38,13 +41,33 @@ object Scraper {
 
     val page = browser.get("http://communaute.orange.fr/t5/ma-connexion/bd-p/connexion")
 
-    // Extract the elements with class "message-subject"
-    val items: List[Element] = page >> elementList(".message-subject")
+    // Extract the thread rows
+    val topicTitlesItems: List[Element] = page >> elementList(".lia-list-row-thread-unread")
+    val topicTitles: List[String] = topicTitlesItems.map(_ >> text("h3"))
+    val topicLinks: List[String] = topicTitlesItems.map(_ >> attr("href")("a"))
 
-    val topicTitles: List[String] = items.map(_ >> text("h3"))
-    val topicLinks: List[String] = items.map(_ >> attr("href")("a"))
+    val topicDateTimeItems: List[Element] = page >> elementList(".DateTime")
+    var topicDates: List[String] = topicDateTimeItems.map(_ >> text(".local-date"))
+    val topicTimes: List[String] = topicDateTimeItems.map(_ >> text(".local-time"))
+
+    // Remove &lrm; character in HTML
+    topicDates = topicDates.map(d => d.replace("\u200E", ""))
+    val topicDateTimes = (topicDates zip topicTimes) map { case (d, t) => convertDate(d) + " " + convertTime(t)}
 
     println(topicTitles)
     println(topicLinks)
+    println(topicDateTimes)
+  }
+
+  def convertDate(date: String): String = {
+    val format = new SimpleDateFormat("dd-MM-yyyy")
+    val parsedDate = format.parse(date)
+    new SimpleDateFormat("yyyy-MM-dd").format(parsedDate)
+  }
+
+  def convertTime(time: String): String = {
+    val format = new SimpleDateFormat("HH'h'mm")
+    val parsedTime = format.parse(time)
+    new SimpleDateFormat("HH:mm").format(parsedTime)
   }
 }
