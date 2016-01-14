@@ -1,5 +1,5 @@
 import java.text.SimpleDateFormat
-import java.util.{Locale, Calendar}
+import scala.collection.mutable.ListBuffer
 
 import net.ruippeixotog.scalascraper.browser.Browser
 import net.ruippeixotog.scalascraper.dsl.DSL._
@@ -9,9 +9,9 @@ import org.jsoup.nodes.Element
 object Scraper {
   def main(args: Array[String]): Unit = {
     val browser = new Browser
-    val baseUrl = "http://communaute.orange.fr/t5"
+    val baseUrl = "http://communaute.orange.fr"
 
-    val subThreads = Seq(
+    val subForums = Seq(
       "/forums/unansweredtopicspage", // Sujets sans réponse
 
       // internet & fixe :
@@ -39,24 +39,44 @@ object Scraper {
       "/gérer-mon-offre-mobile/bd-p/compte" // gérer mon offre mobile
     )
 
-    val page = browser.get("http://communaute.orange.fr/t5/ma-connexion/bd-p/connexion")
+    val subForumPage = browser.get("http://communaute.orange.fr/t5/ma-connexion/bd-p/connexion")
 
     // Extract the thread rows
-    val topicTitlesItems: List[Element] = page >> elementList(".lia-list-row-thread-unread")
-    val topicTitles: List[String] = topicTitlesItems.map(_ >> text("h3"))
-    val topicLinks: List[String] = topicTitlesItems.map(_ >> attr("href")("a"))
+    val threadTitlesItems: List[Element] = subForumPage >> elementList(".lia-list-row-thread-unread")
+    val threadTitles: List[String] = threadTitlesItems.map(_ >> text("h3"))
+    val threadRelLinks: List[String] = threadTitlesItems.map(_ >> attr("href")("a"))
+    val threadLinks: List[String] = threadRelLinks.map { l => baseUrl + l}
 
-    val topicDateTimeItems: List[Element] = page >> elementList(".DateTime")
-    var topicDates: List[String] = topicDateTimeItems.map(_ >> text(".local-date"))
-    val topicTimes: List[String] = topicDateTimeItems.map(_ >> text(".local-time"))
+    val threadDateTimeItems: List[Element] = subForumPage >> elementList(".DateTime")
+    var threadDates: List[String] = threadDateTimeItems.map(_ >> text(".local-date"))
+    val threadTimes: List[String] = threadDateTimeItems.map(_ >> text(".local-time"))
 
     // Remove &lrm; character in HTML
-    topicDates = topicDates.map(d => d.replace("\u200E", ""))
-    val topicDateTimes = (topicDates zip topicTimes) map { case (d, t) => convertDate(d) + " " + convertTime(t)}
+    threadDates = threadDates.map(d => d.replace("\u200E", ""))
+    val threadDateTimes = (threadDates zip threadTimes) map { case (d, t) => convertDate(d) + " " + convertTime(t)}
 
-    println(topicTitles)
-    println(topicLinks)
-    println(topicDateTimes)
+    // Extract messages of a thread
+    var threadMessages = new ListBuffer[List[Map[String, String]]]()
+    for (thread <- threadLinks) {
+      val threadPage = browser.get(thread)
+      val threadMessagesItems: List[Element] = threadPage >> elementList(".lia-message-body-content")
+
+      var messages = new ListBuffer[Map[String, String]]()
+      for (threadMessage <- threadMessagesItems) {
+        val message = threadMessage >> extractor(".lia-message-body-content", text)
+        messages += Map(message -> "SENTIMENT")
+      }
+      threadMessages += messages.toList
+    }
+
+    // Combine title, link, timestamp and messages of each thread
+    val threadMessagesList = threadMessages.toList
+    val threads = ((threadTitles zip threadLinks) zip threadDateTimes) zip threadMessagesList map {
+      case (((threadTitles, threadLinks), threadDateTimes), threadMessagesList) =>
+        (threadTitles, threadLinks, threadDateTimes, threadMessagesList)
+    }
+    println(threads)
+
   }
 
   def convertDate(date: String): String = {
