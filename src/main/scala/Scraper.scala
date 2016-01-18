@@ -1,4 +1,7 @@
 import java.text.SimpleDateFormat
+import org.apache.spark.streaming.{Seconds, StreamingContext}
+import org.apache.spark.{SparkContext, SparkConf}
+
 import scala.collection.mutable.ListBuffer
 
 import net.ruippeixotog.scalascraper.browser.Browser
@@ -8,6 +11,15 @@ import org.jsoup.nodes.Element
 
 object Scraper {
   def main(args: Array[String]): Unit = {
+
+    val conf = new SparkConf()
+      .setMaster("local[*]")
+      .setAppName("OFScraper")
+      .set("spark.cassandra.connection.host", "localhost")
+    val sc = new SparkContext(conf)
+    val ssc = new StreamingContext(sc, Seconds(5))
+
+
     val browser = new Browser
     val baseUrl = "http://communaute.orange.fr"
 
