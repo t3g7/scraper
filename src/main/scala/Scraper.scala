@@ -82,28 +82,29 @@ object Scraper {
       // To do: return a list of indexes for threads with same date
       val indexNewThread = threadTimestamp.indexOf(now)
 
-      // Extract messages of a thread
-      var threadMessages = new ListBuffer[List[Map[String, String]]]()
-      for (thread <- threadLinks) {
-        val threadPage = browser.get(thread)
-        val threadMessagesItems: List[Element] = threadPage >> elementList(".lia-message-body-content")
-
-        var messages = new ListBuffer[Map[String, String]]()
-        for (threadMessage <- threadMessagesItems) {
-          val message = threadMessage >> extractor(".lia-message-body-content", text)
-          messages += Map(message -> "SENTIMENT")
-        }
-        threadMessages += messages.toList
-      }
-
-      // Combine title, link, timestamp and messages of each thread
-      val threadMessagesList = threadMessages.toList
-      val threads = ((threadTitles zip threadLinks) zip threadDateTimes) zip threadMessagesList map {
-        case (((threadTitles, threadLinks), threadDateTimes), threadMessagesList) =>
-          (threadTitles, threadLinks, threadDateTimes, threadMessagesList)
-      }
-
       if (countPass == 0) {
+
+        // Extract messages of threads
+        var threadMessages = new ListBuffer[List[Map[String, String]]]()
+        for (thread <- threadLinks) {
+          val threadPage = browser.get(thread)
+          val threadMessagesItems: List[Element] = threadPage >> elementList(".lia-message-body-content")
+
+          var messages = new ListBuffer[Map[String, String]]()
+          for (threadMessage <- threadMessagesItems) {
+            val message = threadMessage >> extractor(".lia-message-body-content", text)
+            messages += Map(message -> "SENTIMENT")
+          }
+          threadMessages += messages.toList
+        }
+
+        // Combine title, link, timestamp and messages of each thread
+        val threadMessagesList = threadMessages.toList
+        val threads = ((threadTitles zip threadLinks) zip threadDateTimes) zip threadMessagesList map {
+          case (((threadTitles, threadLinks), threadDateTimes), threadMessagesList) =>
+            (threadTitles, threadLinks, threadDateTimes, threadMessagesList)
+        }
+
         println("Saving " + threads.length + " threads - " + timestampFormatByMinute.format(Calendar.getInstance().getTime()))
 
         val threadsRDD = sc.makeRDD(threads.toSeq)
@@ -112,7 +113,29 @@ object Scraper {
         countPass += 1
       } else {
         if (indexNewThread != -1) {
-          val newThread = List(threads(indexNewThread)).toSeq
+
+          // Extract messages of the updated or new thread
+          var threadMessages = new ListBuffer[List[Map[String, String]]]()
+          val threadPage = browser.get(threadLinks(indexNewThread))
+          val threadMessagesItems: List[Element] = threadPage >> elementList(".lia-message-body-content")
+
+          var messages = new ListBuffer[Map[String, String]]()
+          for (threadMessage <- threadMessagesItems) {
+            val message = threadMessage >> extractor(".lia-message-body-content", text)
+            messages += Map(message -> "SENTIMENT")
+          }
+          threadMessages += messages.toList
+
+          // Combine title, link, timestamp and messages of each thread
+          val threadMessagesList = threadMessages.toList
+          val threads = ((threadTitles zip threadLinks) zip threadDateTimes) zip threadMessagesList map {
+            case (((threadTitles, threadLinks), threadDateTimes), threadMessagesList) =>
+              (threadTitles, threadLinks, threadDateTimes, threadMessagesList)
+          }
+
+          println(threads)
+
+          val newThread = List(threads(0)).toSeq
           println("Saving new thread : " + newThread(0) + " - " + timestampFormatBySecond.format(Calendar.getInstance().getTime()))
 
           val threadsRDD = sc.makeRDD(newThread)

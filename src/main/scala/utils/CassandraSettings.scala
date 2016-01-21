@@ -19,7 +19,7 @@ object CassandraSettings {
           title text,
           link text,
           date timestamp,
-          messages list<text>,
+          messages frozen <list<map<text, text>>>,
           PRIMARY KEY (title)
         )"""
       )
