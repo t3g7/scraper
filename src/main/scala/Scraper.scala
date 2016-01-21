@@ -1,6 +1,10 @@
 import java.text.SimpleDateFormat
+import java.util.Calendar
+
+import com.datastax.spark.connector._
 import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkContext, SparkConf}
+import utils.CassandraSettings
 
 import scala.collection.mutable.ListBuffer
 
@@ -19,6 +23,12 @@ object Scraper {
       .set("spark.cassandra.connection.host", "localhost")
     val sc = new SparkContext(conf)
 
+    CassandraSettings.setUp(conf)
+
+    val timestampFormatBySecond = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+    val timestampFormatByMinute = new SimpleDateFormat("yyyy-MM-dd HH:mm")
+
+    var countPass = 0
     while (true) {
       val browser = new Browser
       val baseUrl = "http://communaute.orange.fr"
@@ -66,9 +76,14 @@ object Scraper {
       // Remove &lrm; character in HTML
       threadDates = threadDates.map(d => d.replace("\u200E", ""))
       val threadDateTimes = (threadDates zip threadTimes) map { case (d, t) => convertDate(d) + " " + convertTime(t) }
+      val threadTimestamp = threadDateTimes.map(x => timestampFormatByMinute.format(timestampFormatByMinute.parse(x)))
+
+      val now = timestampFormatByMinute.format(Calendar.getInstance().getTime())
+      // To do: return a list of indexes for threads with same date
+      val indexNewThread = threadTimestamp.indexOf(now)
 
       // Extract messages of a thread
-      var threadMessages = new ListBuffer[List[Map[String, String]]]()
+      /*var threadMessages = new ListBuffer[List[Map[String, String]]]()
       for (thread <- threadLinks) {
         val threadPage = browser.get(thread)
         val threadMessagesItems: List[Element] = threadPage >> elementList(".lia-message-body-content")
@@ -79,19 +94,45 @@ object Scraper {
           messages += Map(message -> "SENTIMENT")
         }
         threadMessages += messages.toList
-      }
+      }*/
 
       // Combine title, link, timestamp and messages of each thread
-      val threadMessagesList = threadMessages.toList
-      val threads = ((threadTitles zip threadLinks) zip threadDateTimes) zip threadMessagesList map {
+      //val threadMessagesList = threadMessages.toList
+      /*val threads = ((threadTitles zip threadLinks) zip threadDateTimes) zip threadMessagesList map {
         case (((threadTitles, threadLinks), threadDateTimes), threadMessagesList) =>
           (threadTitles, threadLinks, threadDateTimes, threadMessagesList)
-      }
-      //println(threads)
+      }*/
 
-      val threadsRDD = sc.makeRDD(threads.toSeq)
-      println(threadsRDD)
-      Thread.sleep(60000)
+      val threads = ((threadTitles zip threadLinks) zip threadTimestamp) map {
+        case ((threadTitles, threadLinks), threadTimestamp) =>
+          (threadTitles, threadLinks, threadTimestamp)
+      }
+
+      if (countPass == 0) {
+        println("Saving " + threads.length + " messages - " + timestampFormatByMinute.format(Calendar.getInstance().getTime()))
+
+        val threadsRDD = sc.makeRDD(threads.toSeq)
+        threadsRDD.saveToCassandra("forums", "messages", SomeColumns("title", "link", "date"))
+
+        countPass += 1
+      } else {
+        if (indexNewThread != -1) {
+          val newThread = threads(indexNewThread)
+
+          println(newThread)
+
+          println("Saving new thread : " + newThread._1 + " - " + timestampFormatBySecond.format(Calendar.getInstance().getTime()))
+
+          val threadsRDD = sc.makeRDD(newThread.productIterator.toList.toSeq)
+          threadsRDD.saveToCassandra("forums", "messages", SomeColumns("title", "link", "date"))
+        } else {
+          println("No new messages to save - " + timestampFormatBySecond.format(Calendar.getInstance().getTime()))
+        }
+
+        countPass += 1
+      }
+
+      Thread.sleep(15000)
     }
   }
 
