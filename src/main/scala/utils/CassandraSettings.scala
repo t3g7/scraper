@@ -15,10 +15,11 @@ object CassandraSettings {
 
       session.execute(
         """
-        CREATE TABLE IF NOT EXISTS forums.messages (
+        CREATE TABLE IF NOT EXISTS forums.threads (
           title text,
           link text,
           date timestamp,
+          messages list<text>,
           PRIMARY KEY (title)
         )"""
       )

@@ -83,7 +83,7 @@ object Scraper {
       val indexNewThread = threadTimestamp.indexOf(now)
 
       // Extract messages of a thread
-      /*var threadMessages = new ListBuffer[List[Map[String, String]]]()
+      var threadMessages = new ListBuffer[List[Map[String, String]]]()
       for (thread <- threadLinks) {
         val threadPage = browser.get(thread)
         val threadMessagesItems: List[Element] = threadPage >> elementList(".lia-message-body-content")
@@ -94,25 +94,20 @@ object Scraper {
           messages += Map(message -> "SENTIMENT")
         }
         threadMessages += messages.toList
-      }*/
+      }
 
       // Combine title, link, timestamp and messages of each thread
-      //val threadMessagesList = threadMessages.toList
-      /*val threads = ((threadTitles zip threadLinks) zip threadDateTimes) zip threadMessagesList map {
+      val threadMessagesList = threadMessages.toList
+      val threads = ((threadTitles zip threadLinks) zip threadDateTimes) zip threadMessagesList map {
         case (((threadTitles, threadLinks), threadDateTimes), threadMessagesList) =>
           (threadTitles, threadLinks, threadDateTimes, threadMessagesList)
-      }*/
-
-      val threads = ((threadTitles zip threadLinks) zip threadTimestamp) map {
-        case ((threadTitles, threadLinks), threadTimestamp) =>
-          (threadTitles, threadLinks, threadTimestamp)
       }
 
       if (countPass == 0) {
-        println("Saving " + threads.length + " messages - " + timestampFormatByMinute.format(Calendar.getInstance().getTime()))
+        println("Saving " + threads.length + " threads - " + timestampFormatByMinute.format(Calendar.getInstance().getTime()))
 
         val threadsRDD = sc.makeRDD(threads.toSeq)
-        threadsRDD.saveToCassandra("forums", "messages", SomeColumns("title", "link", "date"))
+        threadsRDD.saveToCassandra("forums", "threads", SomeColumns("title", "link", "date", "messages"))
 
         countPass += 1
       } else {
@@ -121,9 +116,9 @@ object Scraper {
           println("Saving new thread : " + newThread(0) + " - " + timestampFormatBySecond.format(Calendar.getInstance().getTime()))
 
           val threadsRDD = sc.makeRDD(newThread)
-          threadsRDD.saveToCassandra("forums", "messages", SomeColumns("title", "link", "date"))
+          threadsRDD.saveToCassandra("forums", "threads", SomeColumns("title", "link", "date", "messages"))
         } else {
-          println("No new messages to save - " + timestampFormatBySecond.format(Calendar.getInstance().getTime()))
+          println("No new threads - " + timestampFormatBySecond.format(Calendar.getInstance().getTime()))
         }
 
         countPass += 1
