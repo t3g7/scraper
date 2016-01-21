@@ -117,13 +117,10 @@ object Scraper {
         countPass += 1
       } else {
         if (indexNewThread != -1) {
-          val newThread = threads(indexNewThread)
+          val newThread = List(threads(indexNewThread)).toSeq
+          println("Saving new thread : " + newThread(0) + " - " + timestampFormatBySecond.format(Calendar.getInstance().getTime()))
 
-          println(newThread)
-
-          println("Saving new thread : " + newThread._1 + " - " + timestampFormatBySecond.format(Calendar.getInstance().getTime()))
-
-          val threadsRDD = sc.makeRDD(newThread.productIterator.toList.toSeq)
+          val threadsRDD = sc.makeRDD(newThread)
           threadsRDD.saveToCassandra("forums", "messages", SomeColumns("title", "link", "date"))
         } else {
           println("No new messages to save - " + timestampFormatBySecond.format(Calendar.getInstance().getTime()))
