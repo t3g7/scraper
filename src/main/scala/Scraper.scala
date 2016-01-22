@@ -1,3 +1,5 @@
+import ml.Predict._
+
 import java.text.SimpleDateFormat
 import java.util.Calendar
 
@@ -22,6 +24,7 @@ object Scraper {
       .set("spark.cassandra.connection.host", "localhost")
     val sc = new SparkContext(conf)
 
+    val trainedModelDir = args(0)
     CassandraSettings.setUp(conf)
 
     val timestampFormatBySecond = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
@@ -92,7 +95,7 @@ object Scraper {
           var messages = new ListBuffer[Map[String, String]]()
           for (threadMessage <- threadMessagesItems) {
             val message = threadMessage >> extractor(".lia-message-body-content", text)
-            messages += Map(message -> "SENTIMENT")
+            messages += Map(message -> predictSentiment(trainedModelDir, message))
           }
           threadMessages += messages.toList
         }
@@ -121,7 +124,7 @@ object Scraper {
           var messages = new ListBuffer[Map[String, String]]()
           for (threadMessage <- threadMessagesItems) {
             val message = threadMessage >> extractor(".lia-message-body-content", text)
-            messages += Map(message -> "SENTIMENT")
+            messages += Map(message -> predictSentiment(trainedModelDir, message))
           }
           threadMessages += messages.toList
 
