@@ -2,7 +2,6 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 
 import com.datastax.spark.connector._
-import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.apache.spark.{SparkContext, SparkConf}
 import utils.CassandraSettings
 
@@ -132,8 +131,6 @@ object Scraper {
             case (((threadTitles, threadLinks), threadDateTimes), threadMessagesList) =>
               (threadTitles, threadLinks, threadDateTimes, threadMessagesList)
           }
-
-          println(threads)
 
           val newThread = List(threads(0)).toSeq
           println("Saving new thread : " + newThread(0) + " - " + timestampFormatBySecond.format(Calendar.getInstance().getTime()))
