@@ -18,9 +18,9 @@ object Scraper {
   def main(args: Array[String]): Unit = {
 
     val conf = new SparkConf()
-      .setMaster("local[*]")
       .setAppName("OFScraper")
-      .set("spark.cassandra.connection.host", "localhost")
+      .setMaster("spark://master:7077")
+      .set("spark.cassandra.connection.host", "Swarm node 1 IP,Swarm node 2 IP,Swarm node 3 IP")
     val sc = new SparkContext(conf)
 
     //val trainedModelDir = args(0)
