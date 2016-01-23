@@ -103,10 +103,9 @@ object Scraper {
           }
 
           countPass += 1
+          Thread.sleep(15000)
         }
       }
-
-      Thread.sleep(5000)
     }
   }
 }
