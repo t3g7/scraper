@@ -24,7 +24,7 @@ object Scraper {
       .set("spark.cassandra.connection.host", "localhost")
     val sc = new SparkContext(conf)
 
-    val trainedModelDir = args(0)
+    //val trainedModelDir = args(0)
     CassandraSettings.setUp(conf)
 
     val timestampFormatBySecond = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
@@ -95,7 +95,8 @@ object Scraper {
           var messages = new ListBuffer[Map[String, String]]()
           for (threadMessage <- threadMessagesItems) {
             val message = threadMessage >> extractor(".lia-message-body-content", text)
-            messages += Map(message -> predictSentiment(trainedModelDir, message))
+            //messages += Map(message -> predictSentiment(trainedModelDir, message))
+            messages += Map(message -> "SENTIMENT")
           }
           threadMessages += messages.toList
         }
@@ -124,7 +125,8 @@ object Scraper {
           var messages = new ListBuffer[Map[String, String]]()
           for (threadMessage <- threadMessagesItems) {
             val message = threadMessage >> extractor(".lia-message-body-content", text)
-            messages += Map(message -> predictSentiment(trainedModelDir, message))
+            //messages += Map(message -> predictSentiment(trainedModelDir, message))
+            messages += Map(message -> "SENTIMENT")
           }
           threadMessages += messages.toList
 
