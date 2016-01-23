@@ -36,99 +36,72 @@ object Scraper {
       val baseUrl = "http://communaute.orange.fr"
 
       val subForums = Seq(
-        "/forums/unansweredtopicspage", // Sujets sans réponse
+        "/t5/forums/unansweredtopicspage", // Sujets sans réponse
 
         // internet & fixe :
-        "/les-offres-Internet-Orange-et/bd-p/ADSL", // les offres Internet Orange et options
-        "/gérer-mon-offre-Internet/bd-p/offre", // gérer mon offre Internet
-        "/homelive/bd-p/domotique", // homelive
-        "/mon-mail-Orange/bd-p/mail", // mon mail Orange
-        "/ma-connexion/bd-p/connexion", // ma connexion
-        "/mon-téléphone-par-internet-et/bd-p/tel", // mon téléphone par internet et fixe
-        "/protéger-mes-données-et-mon/bd-p/securite", // protéger mes données et mon accès internet
-        "/mes-services-Orange/bd-p/services", // mes services Orange
+        "/t5/les-offres-Internet-Orange-et/bd-p/ADSL", // les offres Internet Orange et options
+        "/t5/gérer-mon-offre-Internet/bd-p/offre", // gérer mon offre Internet
+        "/t5/homelive/bd-p/domotique", // homelive
+        "/t5/mon-mail-Orange/bd-p/mail", // mon mail Orange
+        "/t5/ma-connexion/bd-p/connexion", // ma connexion
+        "/t5/mon-téléphone-par-internet-et/bd-p/tel", // mon téléphone par internet et fixe
+        "/t5/protéger-mes-données-et-mon/bd-p/securite", // protéger mes données et mon accès internet
+        "/t5/mes-services-Orange/bd-p/services", // mes services Orange
 
         // TV d'Orange
-        "/TV-par-ADSL-et-Fibre/bd-p/maTV", // TV par ADSL et Fibre
-        "/TV-par-Satellite/bd-p/TV", // TV par Satellite
-        "/gerer-mon-offre-TV/bd-p/gerer", // gerer mon offre TV
-        "/regarder-la-TV-sur-mon-PC-ma/bd-p/webtv", // regarder la TV sur mon PC
-        "/TV-à-la-demande-OCS-et-VOD/bd-p/OCS", // TV à la demande, OCS et VOD
+        "/t5/TV-par-ADSL-et-Fibre/bd-p/maTV", // TV par ADSL et Fibre
+        "/t5/TV-par-Satellite/bd-p/TV", // TV par Satellite
+        "/t5/gerer-mon-offre-TV/bd-p/gerer", // gerer mon offre TV
+        "/t5/regarder-la-TV-sur-mon-PC-ma/bd-p/webtv", // regarder la TV sur mon PC
+        "/t5/TV-à-la-demande-OCS-et-VOD/bd-p/OCS", // TV à la demande, OCS et VOD
 
         // mobile Orange
-        "/offres-mobile-Orange-et-options/bd-p/offres", // offres mobile Orange et options
-        "/l-iPhone-et-ses-applications/bd-p/iphone-et-ses-applications", // l'iPhone et ses applications
-        "/clé-3G-Domino-et-Tablettes/bd-p/tablettes", // clé 3G Domino et Tablettes
-        "/utiliser-mon-mobile/bd-p/iphone", // utiliser mon mobile
-        "/gérer-mon-offre-mobile/bd-p/compte" // gérer mon offre mobile
+        "/t5/offres-mobile-Orange-et-options/bd-p/offres", // offres mobile Orange et options
+        "/t5/l-iPhone-et-ses-applications/bd-p/iphone-et-ses-applications", // l'iPhone et ses applications
+        "/t5/clé-3G-Domino-et-Tablettes/bd-p/tablettes", // clé 3G Domino et Tablettes
+        "/t5/utiliser-mon-mobile/bd-p/iphone", // utiliser mon mobile
+        "/t5/gérer-mon-offre-mobile/bd-p/compte" // gérer mon offre mobile
       )
 
-      val subForumPage = browser.get("http://communaute.orange.fr/t5/ma-connexion/bd-p/connexion")
+      for (subForumLink <- subForums) {
+        val subForumPage = browser.get(baseUrl + subForumLink)
 
-      // Extract the thread rows
-      val threadTitlesItems: List[Element] = subForumPage >> elementList(".lia-list-row-thread-unread")
-      val threadTitles: List[String] = threadTitlesItems.map(_ >> text("h3"))
-      val threadRelLinks: List[String] = threadTitlesItems.map(_ >> attr("href")("a"))
-      val threadLinks: List[String] = threadRelLinks.map { l => baseUrl + l }
+        // Extract the thread rows
+        val threadTitlesItems: List[Element] = subForumPage >> elementList(".lia-list-row-thread-unread")
+        val threadTitles: List[String] = threadTitlesItems.map(_ >> text("h3"))
+        val threadRelLinks: List[String] = threadTitlesItems.map(_ >> attr("href")("a"))
+        val threadLinks: List[String] = threadRelLinks.map { l => baseUrl + l }
 
-      val threadDateTimeItems: List[Element] = subForumPage >> elementList(".DateTime")
-      var threadDates: List[String] = threadDateTimeItems.map(_ >> text(".local-date"))
-      val threadTimes: List[String] = threadDateTimeItems.map(_ >> text(".local-time"))
+        val threadDateTimeItems: List[Element] = subForumPage >> elementList(".DateTime")
+        var threadDates: List[String] = threadDateTimeItems.map(_ >> text(".local-date"))
+        val threadTimes: List[String] = threadDateTimeItems.map(_ >> text(".local-time"))
 
-      // Remove &lrm; character in HTML
-      threadDates = threadDates.map(d => d.replace("\u200E", ""))
-      val threadDateTimes = (threadDates zip threadTimes) map { case (d, t) => convertDate(d) + " " + convertTime(t) }
-      val threadTimestamp = threadDateTimes.map(x => timestampFormatByMinute.format(timestampFormatByMinute.parse(x)))
+        // Remove &lrm; character in HTML
+        threadDates = threadDates.map(d => d.replace("\u200E", ""))
+        val threadDateTimes = (threadDates zip threadTimes) map { case (d, t) => convertDate(d) + " " + convertTime(t) }
+        val threadTimestamp = threadDateTimes.map(x => timestampFormatByMinute.format(timestampFormatByMinute.parse(x)))
 
-      val now = timestampFormatByMinute.format(Calendar.getInstance().getTime())
-      // To do: return a list of indexes for threads with same date
-      val indexNewThread = threadTimestamp.indexOf(now)
+        val now = timestampFormatByMinute.format(Calendar.getInstance().getTime())
+        // To do: return a list of indexes for threads with same date
+        val indexNewThread = threadTimestamp.indexOf(now)
 
-      if (countPass == 0) {
+        // Scrape all messages from the subForums sequence (18 subforums)
+        if (countPass < 19) {
 
-        // Extract messages of threads
-        var threadMessages = new ListBuffer[List[Map[String, String]]]()
-        for (thread <- threadLinks) {
-          val threadPage = browser.get(thread)
-          val threadMessagesItems: List[Element] = threadPage >> elementList(".lia-message-body-content")
-
-          var messages = new ListBuffer[Map[String, String]]()
-          for (threadMessage <- threadMessagesItems) {
-            val message = threadMessage >> extractor(".lia-message-body-content", text)
-            //messages += Map(message -> predictSentiment(trainedModelDir, message))
-            messages += Map(message -> "SENTIMENT")
-          }
-          threadMessages += messages.toList
-        }
-
-        // Combine title, link, timestamp and messages of each thread
-        val threadMessagesList = threadMessages.toList
-        val threads = ((threadTitles zip threadLinks) zip threadDateTimes) zip threadMessagesList map {
-          case (((threadTitles, threadLinks), threadDateTimes), threadMessagesList) =>
-            (threadTitles, threadLinks, threadDateTimes, threadMessagesList)
-        }
-
-        println("Saving " + threads.length + " threads - " + timestampFormatByMinute.format(Calendar.getInstance().getTime()))
-
-        val threadsRDD = sc.makeRDD(threads.toSeq)
-        threadsRDD.saveToCassandra("forums", "threads", SomeColumns("title", "link", "date", "messages"))
-
-        countPass += 1
-      } else {
-        if (indexNewThread != -1) {
-
-          // Extract messages of the updated or new thread
+          // Extract messages of threads
           var threadMessages = new ListBuffer[List[Map[String, String]]]()
-          val threadPage = browser.get(threadLinks(indexNewThread))
-          val threadMessagesItems: List[Element] = threadPage >> elementList(".lia-message-body-content")
+          for (thread <- threadLinks) {
+            val threadPage = browser.get(thread)
+            val threadMessagesItems: List[Element] = threadPage >> elementList(".lia-message-body-content")
 
-          var messages = new ListBuffer[Map[String, String]]()
-          for (threadMessage <- threadMessagesItems) {
-            val message = threadMessage >> extractor(".lia-message-body-content", text)
-            //messages += Map(message -> predictSentiment(trainedModelDir, message))
-            messages += Map(message -> "SENTIMENT")
+            var messages = new ListBuffer[Map[String, String]]()
+            for (threadMessage <- threadMessagesItems) {
+              val message = threadMessage >> extractor(".lia-message-body-content", text)
+              //messages += Map(message -> predictSentiment(trainedModelDir, message))
+              messages += Map(message -> "SENTIMENT")
+            }
+            threadMessages += messages.toList
           }
-          threadMessages += messages.toList
 
           // Combine title, link, timestamp and messages of each thread
           val threadMessagesList = threadMessages.toList
@@ -137,19 +110,49 @@ object Scraper {
               (threadTitles, threadLinks, threadDateTimes, threadMessagesList)
           }
 
-          val newThread = List(threads(0)).toSeq
-          println("Saving new thread : " + newThread(0) + " - " + timestampFormatBySecond.format(Calendar.getInstance().getTime()))
+          println("Saving " + threads.length + " threads from subforum " + subForumLink.split("/").last + " - " + timestampFormatBySecond.format(Calendar.getInstance().getTime()))
 
-          val threadsRDD = sc.makeRDD(newThread)
+          val threadsRDD = sc.makeRDD(threads.toSeq)
           threadsRDD.saveToCassandra("forums", "threads", SomeColumns("title", "link", "date", "messages"))
-        } else {
-          println("No new threads - " + timestampFormatBySecond.format(Calendar.getInstance().getTime()))
-        }
 
-        countPass += 1
+          countPass += 1
+        } else {
+          if (indexNewThread != -1) {
+
+            // Extract messages of the updated or new thread
+            var threadMessages = new ListBuffer[List[Map[String, String]]]()
+            val threadPage = browser.get(threadLinks(indexNewThread))
+            val threadMessagesItems: List[Element] = threadPage >> elementList(".lia-message-body-content")
+
+            var messages = new ListBuffer[Map[String, String]]()
+            for (threadMessage <- threadMessagesItems) {
+              val message = threadMessage >> extractor(".lia-message-body-content", text)
+              //messages += Map(message -> predictSentiment(trainedModelDir, message))
+              messages += Map(message -> "SENTIMENT")
+            }
+            threadMessages += messages.toList
+
+            // Combine title, link, timestamp and messages of each thread
+            val threadMessagesList = threadMessages.toList
+            val threads = ((threadTitles zip threadLinks) zip threadDateTimes) zip threadMessagesList map {
+              case (((threadTitles, threadLinks), threadDateTimes), threadMessagesList) =>
+                (threadTitles, threadLinks, threadDateTimes, threadMessagesList)
+            }
+
+            val newThread = List(threads(0)).toSeq
+            println("Saving new thread : " + newThread(0) + " " + subForumLink.split("/").last + " - " + timestampFormatBySecond.format(Calendar.getInstance().getTime()))
+
+            val threadsRDD = sc.makeRDD(newThread)
+            threadsRDD.saveToCassandra("forums", "threads", SomeColumns("title", "link", "date", "messages"))
+          } else {
+            println("No new threads - " + timestampFormatBySecond.format(Calendar.getInstance().getTime()))
+          }
+
+          countPass += 1
+        }
       }
 
-      Thread.sleep(15000)
+      Thread.sleep(5000)
     }
   }
 
