@@ -31,3 +31,13 @@ Run `ml.Train` with the `csv` file to save a trained model:
 Use `sbt assembly` to compile it and run:
 
     ./bin/spark-submit --class Scraper scraper-assembly.jar
+    
+## Run the scraper on a Docker Swarm cluster
+
+Deploy the Spark - Cassandra cluster with [t3g7/deployer](https://github.com/t3g7/deployer).
+
+Then get Swarm nodes IPs with `docker-machine ip swarm-node-{1,2,3}` and replace `"Swarm node 1 IP,Swarm node 2 IP,Swarm node 3 IP"` with them as `spark.cassandra.connection.host` in `Scraper.scala`.
+
+Copy the jar in `t3g7/deployer/data` and run it:
+
+    docker exec -it swarm-master/master /usr/local/spark/bin/spark-submit --class Scraper --master spark://master:7077 /usr/local/spark/data/scraper-assembly-$VERSION.jar
